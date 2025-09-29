@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Chaos Continu Ultra Fluide Optimisé</title>
+  <style>
+    body { margin:0; font-family:monospace; background:#fff; color:#111; overflow-x:hidden; }
+    canvas { display:block; width:100%; height:100vh; }
+  </style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<script>
+(() => {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  let W = window.innerWidth;
+  let H = window.innerHeight;
+  canvas.width = W;
+  canvas.height = H;
+
+  function rand(min,max){ return Math.random()*(max-min)+min }
+  function choice(arr){ return arr[Math.floor(Math.random()*arr.length)] }
+  const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&*?".split("");
+
+  class Cell{
+    constructor(x,y,size){
+      this.baseX = x;
+      this.baseY = y;
+      this.size = size;
+      this.type = choice(['circle','square','triangle','polygon','star']);
+      this.sides = Math.floor(rand(3,10));
+      this.colorH = Math.random()*360;
+      this.colorS = 60+Math.random()*40;
+      this.colorL = 40+Math.random()*50;
+      this.angle = rand(0,Math.PI*2);
+      this.speed = rand(0.1,0.3);
+      this.rot = rand(0,Math.PI*2);
+      this.rotSpeed = rand(-0.25,0.25);
+      this.pulseSpeed = rand(0.15,0.25);
+      this.colorSpeed = rand(0.05,0.15);
+      this.letters = [];
+      for(let i=0;i<rand(5,15);i++){
+        this.letters.push({
+          offsetX: rand(-size/2,size/2),
+          offsetY: rand(-size/2,size/2),
+          char: choice(LETTERS),
+          fontSize: rand(14,28)
+        });
+      }
+    }
+
+    draw(t){
+      const x = this.baseX + Math.sin(t*this.speed+this.angle)*35;
+      const y = this.baseY + Math.cos(t*this.speed+this.angle)*35;
+      const dynamicSize = this.size * (1 + Math.sin(t*this.pulseSpeed+this.angle)*0.4);
+      const h = (this.colorH + t*this.colorSpeed)%360;
+
+      ctx.save();
+      ctx.translate(x+this.size/2, y+this.size/2);
+      ctx.rotate(this.rot + t*this.rotSpeed);
+      ctx.fillStyle = `hsl(${h},${this.colorS}%,${this.colorL}%)`;
+      ctx.beginPath();
+
+      if(this.type==='circle') ctx.arc(0,0,dynamicSize/2,0,Math.PI*2);
+      else if(this.type==='square') ctx.rect(-dynamicSize/2,-dynamicSize/2,dynamicSize,dynamicSize);
+      else if(this.type==='triangle'){
+        ctx.moveTo(0,-dynamicSize/2);
+        ctx.lineTo(dynamicSize/2,dynamicSize/2);
+        ctx.lineTo(-dynamicSize/2,dynamicSize/2);
+        ctx.closePath();
+      } else {
+        const R = dynamicSize/2;
+        for(let i=0;i<this.sides;i++){
+          const a = (i/this.sides)*Math.PI*2;
+          const X = Math.cos(a)*R;
+          const Y = Math.sin(a)*R;
+          if(i===0) ctx.moveTo(X,Y); else ctx.lineTo(X,Y);
+        }
+        ctx.closePath();
+      }
+      ctx.fill();
+
+      ctx.globalCompositeOperation = 'source-atop';
+      for(const l of this.letters){
+        const fx = l.offsetX + Math.sin(t*0.12)*15;
+        const fy = l.offsetY + Math.cos(t*0.12)*15;
+        ctx.font = `${l.fontSize}px monospace`;
+        ctx.fillStyle = `hsl(${(h+rand(0,60))%360},${this.colorS}%,${this.colorL}%)`;
+        ctx.fillText(l.char, fx, fy);
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.restore();
+    }
+  }
+
+  const cells = [];
+  const gridSize = 100;
+  for(let y=0;y<H;y+=gridSize){
+    for(let x=0;x<W;x+=gridSize){
+      cells.push(new Cell(x,y,gridSize));
+    }
+  }
+
+  window.addEventListener('resize',()=>{
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = W;
+    canvas.height = H;
+  });
+
+  function animate(t){
+    ctx.clearRect(0,0,W,H);
+    for(const c of cells){
+      c.draw(t*0.001);
+    }
+    requestAnimationFrame(animate);
+  }
+  requestAnimationFrame(animate);
+})();
+</script>
+</body>
+</html>

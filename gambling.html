@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Blackjack Pro avec Serveuse</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #1a472a;
+            color: white;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .game-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Style des cartes */
+        .card {
+            width: 80px;
+            height: 120px;
+            background: white;
+            border-radius: 8px;
+            display: inline-flex;
+            flex-direction: column;
+            justify-content: space-between;
+            margin: 5px;
+            padding: 10px;
+            position: relative;
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+            animation: deal 0.5s ease-out;
+        }
+
+        .card::before, .card::after {
+            position: absolute;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .card::before { top: 5px; left: 10px; }
+        .card::after { bottom: 5px; right: 10px; transform: rotate(180deg); }
+
+        .card[data-suit="♥"], .card[data-suit="♦"] { color: #ff0000; }
+        .card[data-suit="♣"], .card[data-suit="♠"] { color: #000000; }
+
+        .card-value {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .card-suit {
+            font-size: 2em;
+            margin: auto;
+        }
+
+        /* Zone de jeu */
+        .player-area, .dealer-area {
+            min-height: 150px;
+            padding: 20px;
+            margin: 20px 0;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+        }
+
+        /* Système de mise */
+        .bankroll {
+            font-size: 1.5em;
+            color: #ffd700;
+            margin: 20px;
+        }
+
+        .bet-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px;
+        }
+
+        .chip {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+
+        .chip:hover {
+            transform: scale(1.1);
+        }
+
+        .chip[data-value="10"] { background: #ff4444; }
+        .chip[data-value="50"] { background: #44ff44; }
+        .chip[data-value="100"] { background: #4444ff; }
+        .chip[data-value="1000"] { background: #d4af37; }
+
+        /* Contrôles du jeu */
+        .game-controls {
+            margin: 20px;
+        }
+
+        button {
+            background: #d4af37;
+            color: #1a472a;
+            border: none;
+            padding: 12px 25px;
+            margin: 5px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        @keyframes deal {
+            from { transform: translateY(-50px) rotate(-5deg); opacity: 0; }
+            to { transform: translateY(0) rotate(0); opacity: 1; }
+        }
+
+        /* Sprite de la serveuse */
+        .waitress-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .waitress {
+            width: 150px;
+            height: 300px;
+            background: url('https://www.example.com/serveuse-sprite.png') no-repeat;
+            background-size: cover;
+            margin-top: 20px;
+        }
+
+        .waitress-thank-you {
+            animation: thank-you 1s ease-in-out;
+        }
+
+        @keyframes thank-you {
+            0% { transform: translateY(0); opacity: 1; }
+            50% { transform: translateY(-10px); opacity: 0.7; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-section">
+            <div class="bankroll">Bankroll: <span id="bankroll-amount">1000</span>€</div>
+        
+            <div class="dealer-area">
+                <h2>Croupier (<span id="dealer-score">0</span>)</h2>
+                <div id="dealer-cards"></div>
+            </div>
+
+            <div class="game-controls">
+                <button id="deal-btn" onclick="startGame()">Nouvelle partie</button>
+                <button id="hit-btn" onclick="playerHit()" disabled>Prendre</button>
+                <button id="stand-btn" onclick="playerStand()" disabled>Rester</button>
+            </div>
+
+            <div class="player-area">
+                <h2>Joueur (<span id="player-score">0</span>)</h2>
+                <div id="player-cards"></div>
+            </div>
+
+            <div class="bet-controls">
+                <div class="chip" data-value="10" onclick="placeBet(10)">10</div>
+                <div class="chip" data-value="50" onclick="placeBet(50)">50</div>
+                <div class="chip" data-value="100" onclick="placeBet(100)">100</div>
+                <div class="chip" data-value="1000" onclick="placeBet(1000)">1000</div>
+            </div>
+            <div class="bankroll">Mise actuelle: <span id="current-bet">0</span>€</div>
+        
+            <div id="game-status"></div>
+        </div>
+
+        <div class="waitress-container">
+            <div class="waitress" id="waitress"></div>
+            <div class="tip-controls">
+                <h2>Donner un pourboire</h2>
+                <div class="tip-amount">
+                    <button class="tip-button" onclick="giveTip(50)">50€</button>
+                    <button class="tip-button" onclick="giveTip(100)">100€</button>
+                    <button class="tip-button" onclick="giveTip(200)">200€</button>
+                </div>
+                <div id="tip-status"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let deck = [];
+        let playerHand = [];
+        let dealerHand = [];
+        let currentBet = 0;
+        let bankroll = 1000;
+        let gameActive = false;
+
+        function createDeck() {
+            const suits = ['♥', '♦', '♣', '♠'];
+            const values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+            
+            return suits.flatMap(suit => 
+                values.map(value => ({ suit, value }))
+            );
+        }
+
+        function shuffleDeck() {
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+        }
+
+        function createCardElement(card, hidden = false) {
+            const div = document.createElement('div');
+            div.className = 'card';
+            div.dataset.suit = card.suit;
+            
+            if (hidden) {
+                div.innerHTML = `
+                    <div class="card-value">?</div>
+                    <div class="card-suit">?</div>
+                `;
+                div.style.backgroundColor = '#333';
+            } else {
+                div.innerHTML = `
+                    <div class="card-value">${card.value}</div>
+                    <div class="card-suit">${card.suit}</div>
+                `;
+            }
+            return div;
+        }
+
+        function calculateHand(hand) {
+            let sum = 0;
+            let aces = 0;
+
+            for (const card of hand) {
+                if (card.value === 'A') {
+                    aces++;
+                    sum += 11;
+                } else if (['J', 'Q', 'K'].includes(card.value)) {
+                    sum += 10;
+                } else {
+                    sum += parseInt(card.value);
+                }
+            }
+
+            while (sum > 21 && aces > 0) {
+                sum -= 10;
+                aces--;
+            }
+            return sum;
+        }
+
+        function updateUI() {
+            // Mise à jour des scores et des cartes
+            document.getElementById('player-score').textContent = calculateHand(playerHand);
+            document.getElementById('dealer-score').textContent = gameActive ? '?' : calculateHand(dealerHand);
+            document.getElementById('player-cards').innerHTML = '';
+            playerHand.forEach(card => 
+                document.getElementById('player-cards').appendChild(createCardElement(card))
+            );
+            document.getElementById('dealer-cards').innerHTML = '';
+            dealerHand.forEach((card, index) => 
+                document.getElementById('dealer-cards').appendChild(
+                    createCardElement(card, gameActive && index === 0)
+                )
+            );
+
+            // Mise à jour de la bankroll et de la mise
+            document.getElementById('bankroll-amount').textContent = bankroll;
+            document.getElementById('current-bet').textContent = currentBet;
+        }
+
+        function placeBet(amount) {
+            if (gameActive || bankroll < amount) return;
+            
+            currentBet += amount;
+            bankroll -= amount;
+            updateUI();
+        }
+
+        function startGame() {
+            if (currentBet === 0) return alert('Placez une mise avant de commencer !');
+            
+            deck = createDeck();
+            shuffleDeck();
+            playerHand = [deck.pop(), deck.pop()];
+            dealerHand = [deck.pop(), deck.pop()];
+            gameActive = true;
+
+            document.getElementById('hit-btn').disabled = false;
+            document.getElementById('stand-btn').disabled = false;
+            updateUI();
+        }
+
+        function playerHit() {
+            if (!gameActive) return;
+            
+            playerHand.push(deck.pop());
+            const score = calculateHand(playerHand);
+            
+            if (score > 21) {
+                endGame('Dépassement ! Vous perdez !', false);
+            }
+            updateUI();
+        }
+
+        function playerStand() {
+            gameActive = false;
+            
+            // Tour du croupier
+            while (calculateHand(dealerHand) < 17) {
+                dealerHand.push(deck.pop());
+            }
+
+            const playerScore = calculateHand(playerHand);
+            const dealerScore = calculateHand(dealerHand);
+
+            if (dealerScore > 21 || playerScore > dealerScore) {
+                endGame('Vous gagnez !', true);
+            } else if (playerScore === dealerScore) {
+                endGame('Égalité !', null);
+            } else {
+                endGame('Le croupier gagne !', false);
+            }
+        }
+
+        function endGame(message, won) {
+            document.getElementById('hit-btn').disabled = true;
+            document.getElementById('stand-btn').disabled = true;
+            
+            if (won === true) {
+                bankroll += currentBet * 2;
+            } else if (won === null) {
+                bankroll += currentBet;
+            }
+            
+            currentBet = 0;
+            gameActive = false;
+            updateUI();
+            document.getElementById('game-status').textContent = message;
+        }
+
+        // Fonction pour donner un pourboire
+        function giveTip(amount) {
+            if (bankroll < amount) {
+                alert("Vous n'avez pas assez d'argent pour donner ce pourboire !");
+                return;
+            }
+            bankroll -= amount;
+            document.getElementById('tip-status').textContent = `Vous avez donné un pourboire de ${amount}€ à la serveuse !`;
+
+            // Animation de remerciement de la serveuse
+            const waitress = document.getElementById('waitress');
+            waitress.classList.add('waitress-thank-you');
+
+            setTimeout(() => {
+                waitress.classList.remove('waitress-thank-you');
+            }, 1000); // Supprimer l'animation après 1 seconde
+
+            updateUI();
+        }
+    </script>
+</body>
+</html>

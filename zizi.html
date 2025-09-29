@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZiziMan vs Vagins Brainrot</title>
+<style>
+  body, html {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #111;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// Classe de zizi ou vagin
+class Shape {
+  constructor(x, y, type, color, isPlayer=false) {
+    this.x = x;
+    this.y = y;
+    this.size = 50;
+    this.angle = 0;
+    this.speedX = (Math.random()-0.5)*10;
+    this.speedY = (Math.random()-0.5)*10;
+    this.type = type; // "zizi" ou "vagin"
+    this.color = color;
+    this.isPlayer = isPlayer;
+    this.boost = false;
+
+    // poils pré-calculés pour zizi
+    this.hairs = [];
+    if(type==="zizi"){
+      for(let i=0;i<5;i++){
+        let angle = (Math.PI*2/5)*i;
+        let length = 10;
+        this.hairs.push({angle,length});
+      }
+    }
+  }
+
+  update() {
+    if(this.isPlayer && this.boost) this.angle += 0.5;
+    else this.angle += 0.05;
+
+    this.x += this.speedX;
+    this.y += this.speedY;
+
+    if(this.x - this.size < 0 || this.x + this.size > canvas.width) this.speedX *= -1;
+    if(this.y - this.size < 0 || this.y + this.size > canvas.height) this.speedY *= -1;
+  }
+
+  draw() {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.angle);
+
+    if(this.type==="zizi"){
+      ctx.fillStyle = this.color;
+      ctx.beginPath();
+      ctx.arc(-this.size/4, 0, this.size/4, 0, Math.PI*2);
+      ctx.arc(this.size/4, 0, this.size/4, 0, Math.PI*2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.ellipse(0, this.size/2, this.size/4, this.size/2, 0, 0, Math.PI*2);
+      ctx.fill();
+
+      // poils
+      ctx.strokeStyle = "black";
+      ctx.lineWidth = 1;
+      this.hairs.forEach(hair=>{
+        ctx.beginPath();
+        let startX = Math.cos(hair.angle)*this.size/4;
+        let startY = Math.sin(hair.angle)*this.size/4 + this.size/2;
+        let endX = Math.cos(hair.angle)*(this.size/4+hair.length);
+        let endY = Math.sin(hair.angle)*(this.size/4+hair.length) + this.size/2;
+        ctx.moveTo(startX,startY);
+        ctx.lineTo(endX,endY);
+        ctx.stroke();
+      });
+
+      // fente
+      ctx.strokeStyle = "black";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, this.size);
+      ctx.lineTo(0, this.size + this.size/4);
+      ctx.stroke();
+    } else if(this.type==="vagin"){
+      ctx.fillStyle = this.color;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, this.size/2, this.size/3, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.strokeStyle = "black";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, -this.size/3);
+      ctx.lineTo(0, this.size/3);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+}
+
+// création des shapes
+const colors = ["#fbe8d3","#d2a87c","#8b5c42","#4a2f1a","#ffcc99","#ffc0cb","#c0c0c0","#fffacd"];
+const shapes = [];
+
+// ZiziMan joueur
+shapes.push(new Shape(canvas.width/2, canvas.height/2, "zizi", colors[0], true));
+
+// 7 autres zizis
+for(let i=1;i<8;i++){
+  shapes.push(new Shape(Math.random()*canvas.width, Math.random()*canvas.height, "zizi", colors[i]));
+}
+
+// 5 vagins humoristiques
+for(let i=0;i<5;i++){
+  shapes.push(new Shape(Math.random()*canvas.width, Math.random()*canvas.height, "vagin", colors[i]));
+}
+
+// gestion boost
+window.addEventListener('keydown', e => { if(e.key===" ") shapes[0].boost = true; });
+window.addEventListener('keyup', e => { if(e.key===" ") shapes[0].boost = false; });
+
+// collision zizi <-> vagin
+function checkCollisions(){
+  shapes.forEach(s1=>{
+    if(s1.type==="zizi"){
+      shapes.forEach(s2=>{
+        if(s2.type==="vagin"){
+          const dx = s1.x - s2.x;
+          const dy = s1.y - s2.y;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          if(dist < s1.size){
+            // transformation aléatoire
+            s1.type = Math.random()<0.5?"zizi":"vagin";
+            s2.type = Math.random()<0.5?"zizi":"vagin";
+          }
+        }
+      });
+    }
+  });
+}
+
+function animate(){
+  ctx.fillStyle = "rgba(17,17,17,0.2)";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  shapes.forEach(s=>{ s.update(); s.draw(); });
+
+  checkCollisions();
+
+  requestAnimationFrame(animate);
+}
+
+animate();
+
+window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
+</script>
+
+</body>
+</html>

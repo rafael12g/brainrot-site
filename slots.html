@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Slot Machine</title>
+    <style>
+        body {
+            background: radial-gradient(circle, #2c3e50, #000);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: 'Arial', sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+
+        .machine {
+            background: linear-gradient(145deg, #34495e 30%, #2c3e50 90%);
+            padding: 2rem;
+            border-radius: 15px;
+            border: 3px solid #f1c40f;
+            box-shadow: 0 0 30px rgba(241, 196, 15, 0.3);
+            position: relative;
+            width: 600px; /* Largeur fixe pour centrer la roulette */
+            margin: auto; /* Centrage horizontal */
+        }
+
+        .reels {
+            display: flex;
+            gap: 15px;
+            margin: 2rem 0;
+            perspective: 1000px;
+            justify-content: center; /* Centrage vertical */
+        }
+
+        .reel {
+            width: 120px;
+            height: 120px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            transform-style: preserve-3d;
+        }
+
+        .symbols {
+            position: absolute;
+            transition: transform 2.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .symbol {
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 50px;
+            text-shadow: 0 0 15px rgba(255,255,255,0.3);
+        }
+
+        .controls {
+            margin-top: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        #balance {
+            color: #f1c40f;
+            font-size: 1.5em;
+            text-shadow: 0 0 10px #f1c40f;
+        }
+
+        #bet {
+            background: rgba(0,0,0,0.7);
+            border: 2px solid #f1c40f;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            width: 100px;
+            text-align: center;
+        }
+
+        button {
+            background: #f1c40f;
+            border: none;
+            padding: 15px 40px;
+            color: white;
+            border-radius: 30px;
+            font-size: 1.2em;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px #f1c40f;
+        }
+
+        .paytable {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #ffd700;
+            max-width: 300px;
+        }
+
+        .coin-rain {
+            position: absolute;
+            animation: coinFall 2s linear forwards;
+            font-size: 25px;
+            color: #ffd700;
+        }
+
+        @keyframes coinFall {
+            0% { transform: translateY(-100px) rotate(0deg); }
+            100% { transform: translateY(100vh) rotate(360deg); }
+        }
+
+        .fireworks {
+            position: absolute;
+            animation: fireworks 2s ease-out forwards;
+            font-size: 50px;
+            color: #ff073a;
+        }
+
+        @keyframes fireworks {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="machine">
+        <h1>🎰 Slot Machine 🎰</h1>
+        
+        <div class="reels">
+            <div class="reel">
+                <div class="symbols" id="reel1"></div>
+            </div>
+            <div class="reel">
+                <div class="symbols" id="reel2"></div>
+            </div>
+            <div class="reel">
+                <div class="symbols" id="reel3"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div>
+                <label>💰 <span id="balance">100</span> €</label>
+                <input type="number" id="bet" value="1" min="1">
+            </div>
+            <button id="playButton" onclick="spin()">JOUER</button>
+        </div>
+    </div>
+
+    <div class="paytable">
+        <h3>📊 Tableau des gains</h3>
+        <div id="paytable-content"></div>
+    </div>
+
+    <script>
+        
+        const symboles = [
+            { 
+                emoji: '🍒', 
+                proba: 25, 
+                multiplicateurs: { 2: 2, 3: 5 }
+            },
+            { 
+                emoji: '🍋', 
+                proba: 20, 
+                multiplicateurs: { 2: 3, 3: 8 }
+            },
+            { 
+                emoji: '🍊', 
+                proba: 10, 
+                multiplicateurs: { 2: 4, 3: 10 }
+            },
+            { 
+                emoji: '💎', 
+                proba: 1,  
+                multiplicateurs: { 2: 10, 3: 50 }
+            },
+            { 
+                emoji: '7️⃣', 
+                proba: 3,  
+                multiplicateurs: { 2: 5, 3: 20 }
+            }
+        ];
+
+        let balance = 100;
+        let isSpinning = false;
+
+        function genererPaytable() {
+            const container = document.getElementById('paytable-content');
+            let html = '<table>';
+            
+            symboles.forEach(s => {
+                html += `
+                    <tr>
+                        <td>${s.emoji}</td>
+                        <td>${s.proba}%</td>
+                        <td>x${s.multiplicateurs[2]} (2x)</td>
+                        <td>x${s.multiplicateurs[3]} (3x)</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</table>';
+            container.innerHTML = html;
+        }
+
+        function getSymbolAleatoire() {
+            const total = symboles.reduce((acc, s) => acc + s.proba, 0);
+            const random = Math.random() * total;
+            
+            let accum = 0;
+            for(const s of symboles) {
+                accum += s.proba;
+                if(random <= accum) return s;
+            }
+        }
+
+        function initReels() {
+            for(let i = 1; i <= 3; i++) {
+                const reel = document.getElementById(`reel${i}`);
+                reel.innerHTML = Array(8).fill().map(() => 
+                    `<div class="symbol">${getSymbolAleatoire().emoji}</div>`
+                ).join('');
+            }
+        }
+
+        function spin() {
+            if(isSpinning) return;
+            
+            const bet = parseInt(document.getElementById('bet').value);
+            if(bet > balance) return alert('Solde insuffisant!');
+            
+            balance -= bet;
+            updateBalance();
+            
+            isSpinning = true;
+            document.getElementById('playButton').disabled = true; // Désactiver le bouton
+            
+            for(let i = 1; i <= 3; i++) {
+                const reel = document.getElementById(`reel${i}`);
+                const randomOffset = Math.floor(Math.random() * 8) * 120;
+                reel.style.transform = `translateY(-${randomOffset}px) rotateX(360deg)`;
+            }
+
+            setTimeout(() => {
+                checkWin();
+                isSpinning = false;
+                document.getElementById('playButton').disabled = false; // Réactiver le bouton
+            }, 2500);
+        }
+
+        function checkWin() {
+            const positions = [];
+            for(let i = 1; i <= 3; i++) {
+                const reel = document.getElementById(`reel${i}`);
+                const symbols = Array.from(reel.getElementsByClassName('symbol'));
+                const position = Math.round((parseInt(reel.style.transform.split('-')[1]) || 0) / 120) % symbols.length;
+                positions.push(symbols[position].textContent);
+            }
+
+            let gainTotal = 0;
+            const bet = parseInt(document.getElementById('bet').value);
+
+            // Calcul des gains
+            if(positions[0] === positions[1] && positions[1] === positions[2]) {
+                const symboleGagnant = symboles.find(s => s.emoji === positions[0]);
+                gainTotal += bet * symboleGagnant.multiplicateurs[3];
+                console.log(`Gain de ${gainTotal}€ pour 3 ${positions[0]}`);
+            } else if(positions[0] === positions[1] || positions[1] === positions[2] || positions[0] === positions[2]) {
+                if(Math.random() < 0.7) { // 70% de chance de gagner quelque chose
+                    const symboleGagnant = symboles.find(s => s.emoji === positions[0]);
+                    gainTotal += bet * symboleGagnant.multiplicateurs[2];
+                    console.log(`Gain de ${gainTotal}€ pour 2 ${positions[0]}`);
+                }
+            }
+
+            if(gainTotal > 0) {
+                balance += gainTotal;
+                updateBalance();
+                showWinEffect(gainTotal);
+            } else {
+            
+            }
+        }
+
+        function showWinEffect(gainAmount) {
+            // Animation de pièces
+            for(let i = 0; i < 20; i++) {
+                const coin = document.createElement('div');
+                coin.className = 'coin-rain';
+                coin.textContent = '💰';
+                coin.style.left = `${Math.random() * 100}%`;
+                coin.style.top = `${Math.random() * 50}%`;
+                document.body.appendChild(coin);
+                setTimeout(() => coin.remove(), 2000);
+            }
+
+            // Feux d'artifice pour gros gains
+            if(gainAmount > 50) {
+                const fireworks = document.createElement('div');
+                fireworks.className = 'fireworks';
+                fireworks.textContent = '🎇';
+                fireworks.style.left = '50%';
+                fireworks.style.top = '50%';
+                fireworks.style.transform = 'translate(-50%, -50%)';
+                document.body.appendChild(fireworks);
+                setTimeout(() => fireworks.remove(), 2000);
+            }
+
+        }
+        function updateBalance() {
+            document.getElementById('balance').textContent = balance;
+        }
+
+        genererPaytable();
+        initReels();
+    </script>
+</body>
+</html>

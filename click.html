@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Paperclips</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        #game-container {
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #ccc;
+        }
+    </style>
+</head>
+<body>
+    <h1>📋 Universal Paperclips</h1>
+    <div id="game-container">
+        <button id="make-clip">Fabriquer un trombone</button>
+        <p id="clip-count">Trombones : <span id="clip-number">0</span></p>
+        <p id="money-count">Argent : <span id="money-number">0</span></p>
+        <button id="sell-clips">Vendre des trombones</button>
+        <button id="buy-machine">Acheter une machine</button>
+        <p id="machine-count">Machines : <span id="machine-number">0</span></p>
+    </div>
+
+    <script>
+        let clipCount = 0;
+        let money = 0;
+        let machineCount = 0;
+
+        document.getElementById('make-clip').addEventListener('click', () => {
+            clipCount++;
+            document.getElementById('clip-number').textContent = clipCount;
+        });
+
+        document.getElementById('sell-clips').addEventListener('click', () => {
+            if (clipCount > 0) {
+                money += clipCount;
+                clipCount = 0;
+                document.getElementById('money-number').textContent = money;
+                document.getElementById('clip-number').textContent = clipCount;
+            }
+        });
+
+        document.getElementById('buy-machine').addEventListener('click', () => {
+            if (money >= 100) {
+                money -= 100;
+                machineCount++;
+                document.getElementById('money-number').textContent = money;
+                document.getElementById('machine-number').textContent = machineCount;
+
+                // Simuler la production automatique
+                setInterval(() => {
+                    clipCount += machineCount;
+                    document.getElementById('clip-number').textContent = clipCount;
+                }, 1000); // Produire des trombones toutes les secondes
+            }
+        });
+    </script>
+</body>
+</html>
